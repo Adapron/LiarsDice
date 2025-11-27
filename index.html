@@ -1024,9 +1024,13 @@
 
         function rollDice() {
             sendDataToHost({action: "rollDice"});
+            document.getElementById("showAllBtn").style.display =   "inline-block";
+            document.getElementById("rollDiceBtn").style.display = "none";
         }
         function showAll() {
             sendDataToHost({action: "showAll"});
+            document.getElementById("showAllBtn").style.display = "none";
+            document.getElementById("rollDiceBtn").style.display = "inline-block";
         }
         function gainDice() {
             sendDataToHost({action: "gainDice"});
@@ -1066,6 +1070,10 @@
                     conn.on("data", (data) => {
                         handleData(data, conn);
                     });
+                    conn.on("close", () => {
+                        // disconnected from host, reload page
+                        window.location.reload();
+                    });
                     currentRoomId = roomId;
                     isHost = false;
                 }
@@ -1080,6 +1088,7 @@
                 conn.on("data", (data) => {
                     handleData(data, conn);
                 });
+                
             });
         }
     </script>
