@@ -765,8 +765,11 @@
                 const template = document.querySelector("#templates .player");
                 const playerElem = template.cloneNode(true);
 
-                playerElem.querySelector(".player-name").textContent = player.name;
-                playerElem.querySelector(".player-avatar").src = player.avatar;
+                var unloadedPlayerName = player.name || "Unknown Player";
+                unloadedPlayerName = unescapeHtml(unloadedPlayerName);
+
+                playerElem.querySelector(".player-name").textContent = unloadedPlayerName;
+                playerElem.querySelector(".player-avatar").src = unescapeHtml(player.avatar || "");
 
                 if (thisYou) {
                     playerElem.classList.add("you");
@@ -1038,19 +1041,42 @@
         function loseDice() {
             sendDataToHost({action: "loseDice"});
         }
-
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;")
+                .replace(/`/g, "&#x60;")
+                .replace(/\//g, "&#x2F;");
+        }
+        function unescapeHtml(safe) {
+            return safe
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/&#x60;/g, "`")
+                .replace(/&#x2F;/g, "/");
+        }
         function joinGame() {
             var username = document.getElementById("username").value;
             if (!username) {
                 username = document.getElementById("username").placeholder;
             }
-            const usernameTooLong = username.length > 20;
-            const avatar = document.getElementById("avatarPreview").src || "";
+            const maxUsernameLength = 20;
+            const usernameTooLong = username.length > maxUsernameLength;
+            var avatar = document.getElementById("avatarPreview").src || "";
 
-            if (usernameTooLong || !avatar || avatar === window.location.href) {
-                alert("Please enter a valid username and choose an avatar.");
+            if (usernameTooLong) {
+                alert("Username exceeds maximum length of " + maxUsernameLength + " characters.");
                 return;
             }
+            //prevent js or html injection
+            username = escapeHtml(username);
+            avatar = escapeHtml(avatar);
             sendDataToHost({action: "join", name: username, avatar: avatar});
             document.getElementById("join").style.display = "none";
             document.getElementById("main").style.display = "block";
