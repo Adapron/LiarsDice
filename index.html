@@ -1044,7 +1044,7 @@
             if (!username) {
                 username = document.getElementById("username").placeholder;
             }
-            const usernameTooLong = username.length > 15;
+            const usernameTooLong = username.length > 20;
             const avatar = document.getElementById("avatarPreview").src || "";
 
             if (usernameTooLong || !avatar || avatar === window.location.href) {
