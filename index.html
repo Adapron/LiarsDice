@@ -654,6 +654,8 @@
             return `${start} ${end}`;
         }
 
+
+
         // Function to create dice dots pattern
         function createDiceDots(number) {
             if (!number || number === "" || number < 1 || number > 6) {
@@ -885,7 +887,9 @@
         var playersInRoom = [];
 
         function copyRoomId() {
-            navigator.clipboard.writeText(currentRoomId)
+            //copy link to this page with room id appended
+            let toCopy = window.location.href.split('?')[0] + "?roomId=" + currentRoomId;
+            navigator.clipboard.writeText(toCopy)
                 .then(() => {
                     console.log("Room ID copied to clipboard:", currentRoomId);
                     // set content of all buttons to "Copied!" for 2 seconds
@@ -1125,6 +1129,15 @@
 
 
         function setupRoom(roomId = null) {
+            //check if provided roomId is not accidentally a whole link, if yes, extract id
+            if (roomId && roomId.includes("?roomId=")) {
+                try {
+                    roomId = roomId.split("?roomId=")[1];
+                    console.log("Extracted roomId from link:", roomId);
+                } catch (error) {
+                    console.error("Error extracting roomId:", error);
+                }
+            }
             document.getElementById("rooms").style.display = "none";
             document.getElementById("join").style.display = "block";
             peer = new Peer();
@@ -1162,6 +1175,19 @@
                 
             });
         }
+
+
+            //initial setup if needed
+            //get id from args
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('roomId');
+            if (roomId) {
+                console.log("Auto-joining room:", roomId);
+                setupRoom(roomId);
+                // hide room setup, show join directly
+                document.getElementById("rooms").style.display = "none";
+                document.getElementById("join").style.display = "block";
+            }
     </script>
         
 </html>
