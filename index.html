@@ -322,7 +322,7 @@
                 90% { transform: translateX(-2px) translateY(-5px); }
             }
 
-            #controls {
+            .controls {
                 background: rgba(0, 0, 0, 0.2);
                 padding: 20px;
                 border-radius: 15px;
@@ -354,7 +354,7 @@
                 margin-top: 15px;
             }
 
-            #controls button {
+            .controls button {
                 background: linear-gradient(45deg, #667eea, #764ba2);
                 color: white;
                 border: none;
@@ -368,12 +368,12 @@
                 min-width: 120px;
             }
 
-            #controls button:hover {
+            .controls button:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
             }
 
-            #controls button:active {
+            .controls button:active {
                 transform: translateY(0);
             }
 
@@ -406,7 +406,7 @@
                     align-items: center;
                 }
 
-                #controls button {
+                .controls button {
                     width: 100%;
                     max-width: 250px;
                     margin: 5px 0;
@@ -608,7 +608,7 @@
             <div class="section">
                 <div id="game-container">
                     <h2>🎮 Game Controls</h2>
-                    <div id="controls">
+                    <div id="controls" class ="controls">
                         <div class="control-group">
                             <button id="rollDiceBtn" onclick="rollDice()">🎲 Roll Dice</button>
                             <button id="showAllBtn" onclick="showAll()">👁️ Reveal Dice</button>
@@ -617,6 +617,10 @@
                             <button id="gainDice" onclick="gainDice()">➕ Add Dice</button>
                             <button id="loseDice" onclick="loseDice()">➖ Remove Dice</button>
                         </div>
+                    </div>
+                    <div id="biggerControls"  class ="controls">
+                        <button id="resetPlayersBtn" onclick="resetPlayers()">🔄 Reset Players</button>
+                        <button id="shufflePlayersBtn" onclick="shufflePlayers()">🔀 Shuffle Players</button>
                     </div>
                 </div>
             </div>
@@ -945,6 +949,10 @@
         }
 
         function handleData(data, conn) {
+            console.log("my peer", peer.id)
+            if (conn){
+                console.log("Connection peer:", conn.peer);
+            }
 
             console.log("Data received in room:", data, conn);
             if (data.type == "joined") {
@@ -953,8 +961,13 @@
             }
             // handle data accordingly
             if (data.action === "join") {
-                const randomUuid = Math.random().toString(36).substring(2, 10);
-                data.uuid = randomUuid;
+                if (!conn) {
+                    data.uuid = peer.id;
+                }
+                else{
+                    data.uuid = conn.peer;
+                }
+                console.log("Player joining:", data.uuid);
                 const newPlayer = new Player(data.uuid, data.name, data.avatar);
                 newPlayer.connection = conn;
                 playersInRoom.push(newPlayer);
@@ -965,6 +978,14 @@
                     // host joined, set myUUID
                     myUUID = data.uuid;
                 }
+                broadcastUserData();
+            }
+            if (data.action === "leave") {
+                console.log("Player leaving:", data.UUID);
+                console.log("Before removal, players:", playersInRoom);
+                playersInRoom = playersInRoom.filter(p => p.uuid !== data.UUID);
+                console.log("After removal, players:", playersInRoom);
+                
                 broadcastUserData();
             }
             if (data.action === "rollDice") {
@@ -1027,13 +1048,32 @@
 
         function rollDice() {
             sendDataToHost({action: "rollDice"});
-            document.getElementById("showAllBtn").style.display =   "inline-block";
-            document.getElementById("rollDiceBtn").style.display = "none";
+            // document.getElementById("showAllBtn").style.display =   "inline-block";
+            // document.getElementById("rollDiceBtn").style.display = "none";
         }
         function showAll() {
             sendDataToHost({action: "showAll"});
-            document.getElementById("showAllBtn").style.display = "none";
-            document.getElementById("rollDiceBtn").style.display = "inline-block";
+            // document.getElementById("showAllBtn").style.display = "none";
+            // document.getElementById("rollDiceBtn").style.display = "inline-block";
+        }
+        function shuffle(array){
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        function resetPlayers() {
+
+            //set all dice to 5
+            playersInRoom.forEach(player => {
+                player.dice = ["", "", "", "", ""];
+            });
+            broadcastUserData();
+        }
+        function shufflePlayers() {
+            playersInRoom = shuffle(playersInRoom);
+            broadcastUserData();
         }
         function gainDice() {
             sendDataToHost({action: "gainDice"});
@@ -1113,6 +1153,11 @@
             peer.on("connection", (conn) => {
                 conn.on("data", (data) => {
                     handleData(data, conn);
+                });
+                conn.on("close", () => {
+                    console.log("Connection closed with peer:", conn.peer);
+                    handleData({action: "leave", UUID: conn.peer});
+                
                 });
                 
             });
