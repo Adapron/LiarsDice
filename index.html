@@ -618,7 +618,7 @@
                             <button id="loseDice" onclick="loseDice()">➖ Remove Dice</button>
                         </div>
                     </div>
-                    <div id="biggerControls"  class ="controls">
+                    <div id="biggerControls"  class ="controls" style="display: none;">
                         <button id="resetPlayersBtn" onclick="resetPlayers()">🔄 Reset Players</button>
                         <button id="shufflePlayersBtn" onclick="shufflePlayers()">🔀 Shuffle Players</button>
                     </div>
@@ -927,7 +927,6 @@
         var showingDice = false;
 
         function broadcastUserData(extra_type = null) {
-            console.log("Broadcasting user data");
             const user_data = playersInRoom.map(player => ({
                 uuid: player.uuid,
                 name: player.name,
@@ -935,11 +934,26 @@
                 dice: showingDice ? player.dice : player.dice.map(() => ""),
                 this_you: false
             }));
+            // list of all players that dont have empty dice
+            const alivePlayers = playersInRoom.filter(p => p.dice.length > 0);
+            const showDiceToDeadPlayers = alivePlayers.length <= 2;
             const message = {type: "user_data", users: user_data, order: playersInRoom.map(p => p.uuid), extra_type: extra_type};
             playersInRoom.forEach(player => {
-                const copy_message = {...message};
+                var copy_message = {...message};
                 // add their own dice if not showing all
                 copy_message.users = copy_message.users.filter(u => u.uuid !== player.uuid);
+                const isDead = player.dice.length === 0;
+                if (showDiceToDeadPlayers && isDead) {
+                    console.log("Showing dice to dead player:", player.uuid);
+                    // add all dice for all dead players
+                    copy_message.users = playersInRoom.map(player => ({
+                    uuid: player.uuid,
+                    name: player.name,
+                    avatar: player.avatar,
+                    dice: player.dice,
+                    this_you: false
+                }));
+                }
                 copy_message.users.push({
                     uuid: player.uuid,
                     name: player.name,
@@ -953,12 +967,9 @@
         }
 
         function handleData(data, conn) {
-            console.log("my peer", peer.id)
             if (conn){
-                console.log("Connection peer:", conn.peer);
             }
 
-            console.log("Data received in room:", data, conn);
             if (data.type == "joined") {
                 myUUID = data.uuid;
                 return;
@@ -971,7 +982,6 @@
                 else{
                     data.uuid = conn.peer;
                 }
-                console.log("Player joining:", data.uuid);
                 const newPlayer = new Player(data.uuid, data.name, data.avatar);
                 newPlayer.connection = conn;
                 playersInRoom.push(newPlayer);
@@ -985,10 +995,7 @@
                 broadcastUserData();
             }
             if (data.action === "leave") {
-                console.log("Player leaving:", data.UUID);
-                console.log("Before removal, players:", playersInRoom);
                 playersInRoom = playersInRoom.filter(p => p.uuid !== data.UUID);
-                console.log("After removal, players:", playersInRoom);
                 
                 broadcastUserData();
             }
@@ -1008,7 +1015,6 @@
                 const player = playersInRoom.find(p => p.uuid === data.UUID);
                 if (player) {
                     player.dice.push("");
-                    console.log("Player gained a die:", player);
                 }
                 broadcastUserData();
             }
@@ -1017,7 +1023,6 @@
                 if (player) {
                     if (player.dice.length === 0) return; // can't lose more dice
                     player.dice.pop();
-                    console.log("Player lost a die:", player);
                 }
                 broadcastUserData();
             }
@@ -1158,6 +1163,7 @@
                 }
                 else{
                     isHost = true;
+                    document.getElementById("biggerControls").style.display = "block";
                     currentRoomId = id;
                     // i connected to room automatically, setup me
                 }
@@ -1168,7 +1174,6 @@
                     handleData(data, conn);
                 });
                 conn.on("close", () => {
-                    console.log("Connection closed with peer:", conn.peer);
                     handleData({action: "leave", UUID: conn.peer});
                 
                 });
@@ -1182,7 +1187,6 @@
             const urlParams = new URLSearchParams(window.location.search);
             const roomId = urlParams.get('roomId');
             if (roomId) {
-                console.log("Auto-joining room:", roomId);
                 setupRoom(roomId);
                 // hide room setup, show join directly
                 document.getElementById("rooms").style.display = "none";
